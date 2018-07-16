@@ -1,6 +1,6 @@
 #include "bank_memory.h"
 
-#ifdef __APPLE__
+#if defined(__APPLE__)
 
 #include <mach/mach.h>
 #include <mach/vm_map.h>
@@ -42,6 +42,54 @@ bank_memory::~bank_memory() {
 	if (base)
 		vm_deallocate(mach_task_self(), (vm_address_t)base, alloc_size);
 }
+#elif defined(__WIN32__)
+
+#include <Windows.h>
+
+bank_memory::bank_memory() {
+
+	void *address;
+	void *address2;
+	void *address3;
+	void *address4;
+
+	handle = CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 256 * 0x010000, NULL);
+	if (handle == INVALID_HANDLE_VALUE) throw GetLastError();
+
+	/* find a suitable location */
+	address = VirtualAlloc(NULL, alloc_size, MEM_RESERVE, PAGE_READWRITE);
+	if (!address) throw GetLastError();
+	VirtualFree(address, 0, MEM_RELEASE);
+
+	address2 = MapViewOfFileEx(handle, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 256 * 0x010000, address);
+	if (address2 == NULL) throw GetLastError();
+	if (address2 != address) throw 0;
+
+	base = address2;
+
+	address = (uint8_t *)address + 256 * 0x010000;
+	address3 = MapViewOfFileEx(h, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 1 * 0x010000, address);
+	if (address2 == NULL) throw GetLastError();
+	if (address2 != address) throw 0;
+	
+	zp = address3;
+
+
+	address = (uint8_t *)address + 256 * 0x010000;
+	address4 = MapViewOfFileEx(h, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 1 * 0x010000, address);
+	if (address2 == NULL) throw GetLastError();
+	if (address2 != address) throw 0;
+}
+
+bank_memory::~bank_memory() {
+	if (base) {
+		UnmapViewOfFile(base);
+		UnmapViewOfFile(base + 256 * 0x010000);
+		UnmapViewOfFile(base + 257 * 0x010000);
+	}
+	if (handle != INVALID_HANDLE_VALUE) CloseHandle(handle);
+}
+
 
 #else
 

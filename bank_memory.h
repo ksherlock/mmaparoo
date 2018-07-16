@@ -18,6 +18,10 @@ public:
 
 	uint8_t *base = nullptr;
 	uint8_t *zp = nullptr;
+#ifdef __WIN32__
+private:
+	void *handle = (void *)-1;
+#endif
 };
 
 #endif
